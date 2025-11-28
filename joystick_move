@@ -1,18 +1,16 @@
-#!/usr/bin/env python 3
+#!/usr/bin/env python3
 from struct import Struct
 from adafruit_crickit import crickit
 import time
 from collections import namedtuple
 import os
 
-
 DEVICE = '/dev/input/js0'
 TYPE_AXIS = 2
 AXIS = {0: 'left_x', 1: 'left_y', 3: 'right_x', 4: 'right_y'}
-TYPE_AXIS = 2
 MAX_VAL = 32767
 
-Event = namedtuple('Event', 'time, value, type, number')
+Event = namedtuple('Event', 'time value type number')
 
 DC_ADJUST_R = float(os.environ.get('ROBO_DC_ADJUST_R', '1'))
 DC_ADJUST_L = float(os.environ.get('ROBO_DC_ADJUST_L', '1'))
@@ -20,42 +18,51 @@ ADJUST = dict(R=DC_ADJUST_R, L=DC_ADJUST_L)
 MOTOR = dict(R=crickit.dc_motor_1, L=crickit.dc_motor_2)
 THROTTLE_SPEED = {0: 0, 1: 0.5, 2: 0.7, 3: 0.9}
 
-def set_throttle(name, speed):
-    MOTOR[name].throttle = THROTTLE_SPEED[speed] * ADJUST[name]
+def set_throttle(name, speed, direction=1):
+    MOTOR[name].throttle = THROTTLE_SPEED[speed] * ADJUST[name] * direction
 
 def forward(duration=0.2, speed=3):
-    set_throttle('R', speed)
-    set_throttle('L', speed)
+    set_throttle('R', speed, 1)
+    set_throttle('L', speed, 1)
     time.sleep(duration)
     set_throttle('R', 0)
     set_throttle('L', 0)
-    
+
+def backward(duration=0.2, speed=3):
+    set_throttle('R', speed, -1)
+    set_throttle('L', speed, -1)
+    time.sleep(duration)
+    set_throttle('R', 0)
+    set_throttle('L', 0)
+
 def handle_event(event):
     if event.type == TYPE_AXIS:
         name = AXIS.get(event.number)
-        if name in ['right_y']:
+        if name == 'right_y':
             direction = 'backward' if event.value > 0 else 'forward'
             percent = round((abs(event.value) / MAX_VAL) * 100, 2)
-            print(name, direction, percent)
-            if direction == 'forward' and percent > 30:
-                if 5 < percent < 30:
-                    forward(duration=0.1, speed=1)
-                    percent = 0
-                elif 31 < percent < 70:
-                    forward(duration=0.1, speed=2)
-                    percent = 0
-                elif 70 < percent < 100:
-                    forward(duration=0.1, speed=3)
-                    percent = 0
+            print(percent, direction)
+
+            if 5 <= percent/4 <= 30:
+                speed = 1
+            elif 31 <= percent/4 <= 70:
+                speed = 2
+            elif percent/4 > 70:
+                speed = 3
+            else:
+                return
+
+            if direction == 'forward':
+                forward(0.1, speed)
+            else:
+                backward(0.1, speed)
 
 def main():
     event_struct = Struct('I h B B')
     with open(DEVICE, 'rb') as js_device:
         while True:
-            bytes = js_device.read(event_struct.size)
-            event = Event(*event_struct.unpack(bytes))
+            data = js_device.read(event_struct.size)
+            event = Event(*event_struct.unpack(data))
             handle_event(event)
-                
-                
 
 main()

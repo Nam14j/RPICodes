@@ -1,2 +1,3 @@
 adafruit-blinka
 adafruit-circuitpython-crickit
+pytest
