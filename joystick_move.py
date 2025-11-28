@@ -18,6 +18,10 @@ ADJUST = dict(R=DC_ADJUST_R, L=DC_ADJUST_L)
 MOTOR = dict(R=crickit.dc_motor_1, L=crickit.dc_motor_2)
 THROTTLE_SPEED = {0: 0, 1: 0.5, 2: 0.7, 3: 0.9}
 
+def stop():
+    MOTOR['R'].throttle = 0
+    MOTOR['L'].throttle = 0
+
 def set_throttle(name, speed, direction=1):
     MOTOR[name].throttle = THROTTLE_SPEED[speed] * ADJUST[name] * direction
 
@@ -25,15 +29,13 @@ def forward(duration=0.2, speed=3):
     set_throttle('R', speed, 1)
     set_throttle('L', speed, 1)
     time.sleep(duration)
-    set_throttle('R', 0)
-    set_throttle('L', 0)
+    stop()
 
 def backward(duration=0.2, speed=3):
     set_throttle('R', speed, -1)
     set_throttle('L', speed, -1)
     time.sleep(duration)
-    set_throttle('R', 0)
-    set_throttle('L', 0)
+    stop()
 
 def handle_event(event):
     if event.type == TYPE_AXIS:
@@ -41,21 +43,27 @@ def handle_event(event):
         if name == 'right_y':
             direction = 'backward' if event.value > 0 else 'forward'
             percent = round((abs(event.value) / MAX_VAL) * 100, 2)
-            print(percent, direction)
+            percent = percent/4
 
-            if 5 <= percent/4 <= 30:
-                speed = 1
-            elif 31 <= percent/4 <= 70:
-                speed = 2
-            elif percent/4 > 70:
-                speed = 3
-            else:
+            if percent < 5:
+                stop()
                 return
+            
+            elif percent <= 10:
+                speed = 1
+                
+            elif percent <= 17.5:
+                speed = 2
+                
+            elif percent > 17.5 or percent == 25:
+                speed = 3
 
             if direction == 'forward':
-                forward(0.1, speed)
+                forward(0.05, speed)
             else:
-                backward(0.1, speed)
+                backward(0.05, speed)
+
+            print(direction, percent,'speed:', speed)
 
 def main():
     event_struct = Struct('I h B B')
