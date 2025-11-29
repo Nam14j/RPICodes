@@ -37,11 +37,23 @@ def backward(duration=0.2, speed=3):
     time.sleep(duration)
     stop()
 
+def spin_left(duration=0.2, speed=3):
+    set_throttle('R', speed)
+    set_throttle('L', speed, 0.5)
+    time.sleep(duration)
+    stop()
+
+def spin_right(duration=0.2, speed=3):
+    set_throttle('R', speed, 0.5)
+    set_throttle('L', speed)
+    time.sleep(duration)
+    stop()
+
 def handle_event(event):
     if event.type == TYPE_AXIS:
         name = AXIS.get(event.number)
         if name == 'right_y':
-            direction = 'backward' if event.value > 0 else 'forward'
+            direction = 'forward' if event.value > 0 else 'backward'
             percent = round((abs(event.value) / MAX_VAL) * 100, 2)
             percent = percent/4
 
@@ -64,6 +76,32 @@ def handle_event(event):
                 backward(0.05, speed)
 
             print(direction, percent,'speed:', speed)
+
+        name = AXIS.get(event.number)
+        if name == 'left_x':
+            direction2 = 'right' if event.value > 0 else 'left'
+            percent2 = round((abs(event.value) / MAX_VAL) * 100, 2)
+            percent2 = percent2 / 4
+
+            if percent2 < 5:
+                stop()
+                return
+
+            elif percent2 <= 10:
+                speed = 1
+
+            elif percent2 <= 17.5:
+                speed = 2
+
+            elif percent2 > 17.5 or percent2 == 25:
+                speed = 3
+
+            if direction2 == 'left':
+                spin_left(0.05, speed)
+            else:
+                spin_right(0.05, speed)
+
+            print("spin:", direction2, percent2, "speed:", speed)
 
 def main():
     event_struct = Struct('I h B B')
